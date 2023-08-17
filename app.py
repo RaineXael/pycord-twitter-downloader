@@ -88,21 +88,13 @@ async def grab(ctx, channel:discord.TextChannel, limit:int):
             else:
                 
                 #An embed exists at this point. TODO: Check if it's a twit, or fxtwit or vxtwit or whatever
-                if '/fxtwitter.com/' in message.content:
+                if '/fxtwitter.com/' in message.content or '/vxtwitter.com/' in message.content:
                     all_embed_data.append(create_data_fx(message))
-                elif '/vxtwitter.com/' in message.content:
-                    failed_messages.append(message.content)
                 elif '/twitter.com/' in message.content:
                     all_embed_data.append(create_data_normal(message))
                 else:
-                    failed_messages.append(message.content)
-                    
-                #make a new data object, get the handle from the first embed (which should exist with the first check)
-                
-                
-                
-                    
-            
+                    failed_messages.append(message.content) #should just try anyways but having this here for now
+
         print(all_embed_data)
         #then with each embed data entry, get the image and name it with the username got before.
 
