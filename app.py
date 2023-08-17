@@ -9,11 +9,15 @@ bot = discord.Bot(command_prefix='xl', description='A simple bot.')
 
 def extract_handle(title):
     print(f"Parsing {title}")
-    if not isinstance(title, str):
-        raise Exception(f"Expected string for title of handle extraction. Obtained {title}.")
-    title = title.split('(@')[1]
-    title = title[:-1]
-    return title
+    try:
+        if not isinstance(title, str):
+            raise Exception(f"Expected string for title of handle extraction. Obtained {title}.")
+        title = title.split('(@')[1]
+        title = title[:-1]
+        return title
+    except Exception as e:
+        print(f"{e}, continuing without appending a handle.")
+        return ''
     
        
 
@@ -35,6 +39,7 @@ async def on_ready():
 
 #creates an EmbedData for a normal twitter.com link
 def create_data_normal(message):
+    print(f"Parsing link{message.content}")
     current_data = EmbedData(extract_handle(message.embeds[0].author.name)) # fetch twi handle (todo check if it's a twi thing)
     #if multiple embeds (> 1 image in one of em)
     if len(message.embeds) > 1:
@@ -44,6 +49,22 @@ def create_data_normal(message):
     else:
         #just one image, just get from index 0
         current_data.image_links.append(message.embeds[0].image.proxy_url)
+    return current_data
+
+
+def create_data_fx(message):
+    print(f"Parsing link{message.content}")
+    current_data = EmbedData(extract_handle(message.embeds[0].title)) # fetch twi handle (todo check if it's a twi thing)
+    #if multiple embeds (> 1 image in one of em)
+    if len(message.embeds) > 1:
+        for embed in message.embeds:
+            #foreach embed(image) slap its link in the current data object
+            current_data.image_links.append(embed.thumbnail.proxy_url)
+    else:
+        #just one image, just get from index 0
+        current_data.image_links.append(message.embeds[0].thumbnail.proxy_url)
+
+
     return current_data
 
 
@@ -65,11 +86,19 @@ async def grab(ctx, channel:discord.TextChannel, limit:int):
                 #should add the message to a "failed fetch" list to be added @ the last message
                 failed_messages.append(message.content)
             else:
-                #An embed exists at this point. TODO: Check if it's a twit, or fxtwit or vxtwit or whatever
                 
-
+                #An embed exists at this point. TODO: Check if it's a twit, or fxtwit or vxtwit or whatever
+                if '/fxtwitter.com/' in message.content:
+                    all_embed_data.append(create_data_fx(message))
+                elif '/vxtwitter.com/' in message.content:
+                    failed_messages.append(message.content)
+                elif '/twitter.com/' in message.content:
+                    all_embed_data.append(create_data_normal(message))
+                else:
+                    failed_messages.append(message.content)
+                    
                 #make a new data object, get the handle from the first embed (which should exist with the first check)
-                all_embed_data.append(create_data_normal(message))
+                
                 
                 
                     
@@ -80,10 +109,16 @@ async def grab(ctx, channel:discord.TextChannel, limit:int):
         failed_message_response = ''
         if len(failed_messages) > 0:
             failed_message_response = '\n\nThere were some messages that failed to parse. Please look at them individually:\n'
+            
             for message in failed_messages:
-                failed_message_response += f'\n* "{message}"'
-
+                
+                if 'https://' in message and len(failed_message_response + message) < 2000:
+                    failed_message_response += f'\n* "{message}"'  
+                
+        print('--------------------------------------------------------------------------------')
+        print(failed_message_response)
         await ctx.respond(f"Embed checking done. Please check the system's files for the output.{failed_message_response}",ephemeral=True)
+        #await ctx.respond(f"Embed checking done. Please check the system's files for the output.",ephemeral=True)
     #except Exception as e:
     #    if '403' in str(e):
     #        await ctx.respond(f'The bot does not have access to the channel "{channel.name}".',ephemeral=True)
