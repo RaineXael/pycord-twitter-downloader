@@ -1,7 +1,7 @@
 import discord
 import dotenv
 import os
-import asyncio
+import requests
 
 dotenv.load_dotenv()
 bot = discord.Bot(command_prefix='xl', description='A simple bot.')
@@ -72,7 +72,10 @@ def create_data_fx(message):
 
 @bot.slash_command(name='grab', description='Grabs all images from embeds in a specific channel')
 async def grab(ctx, channel:discord.TextChannel, limit:int):
+    
     #try:
+        await ctx.respond(f"Attempting to fetch embeds...")
+        
         messages = await channel.history(limit=limit).flatten()
 
         all_embed_data = []
@@ -86,14 +89,14 @@ async def grab(ctx, channel:discord.TextChannel, limit:int):
                 #should add the message to a "failed fetch" list to be added @ the last message
                 failed_messages.append(message.content)
             else:
-                
-                #An embed exists at this point. TODO: Check if it's a twit, or fxtwit or vxtwit or whatever
                 if '/fxtwitter.com/' in message.content or '/vxtwitter.com/' in message.content:
                     all_embed_data.append(create_data_fx(message))
                 elif '/twitter.com/' in message.content:
                     all_embed_data.append(create_data_normal(message))
                 else:
                     failed_messages.append(message.content) #should just try anyways but having this here for now
+
+        
 
         print(all_embed_data)
         #then with each embed data entry, get the image and name it with the username got before.
@@ -104,12 +107,15 @@ async def grab(ctx, channel:discord.TextChannel, limit:int):
             
             for message in failed_messages:
                 
-                if 'https://' in message and len(failed_message_response + message) < 2000:
+                if 'https://' in message and len(failed_message_response + message) < 1800:
                     failed_message_response += f'\n* "{message}"'  
                 
         print('--------------------------------------------------------------------------------')
         print(failed_message_response)
-        await ctx.respond(f"Embed checking done. Please check the system's files for the output.{failed_message_response}",ephemeral=True)
+
+
+
+        await ctx.send(f"Embed checking done. Starting downloading process.{failed_message_response}")
         #await ctx.respond(f"Embed checking done. Please check the system's files for the output.",ephemeral=True)
     #except Exception as e:
     #    if '403' in str(e):
