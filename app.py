@@ -32,6 +32,23 @@ class EmbedData():
 async def on_ready():
     print(f"{bot.user} is ready and online!")
 
+
+#creates an EmbedData for a normal twitter.com link
+def create_data_normal(message):
+    current_data = EmbedData(extract_handle(message.embeds[0].author.name)) # fetch twi handle (todo check if it's a twi thing)
+    #if multiple embeds (> 1 image in one of em)
+    if len(message.embeds) > 1:
+        for embed in message.embeds:
+            #foreach embed(image) slap its link in the current data object
+            current_data.image_links.append(embed.image.proxy_url)
+    else:
+        #just one image, just get from index 0
+        current_data.image_links.append(message.embeds[0].image.proxy_url)
+    return current_data
+
+
+
+
 @bot.slash_command(name='grab', description='Grabs all images from embeds in a specific channel')
 async def grab(ctx, channel:discord.TextChannel, limit:int):
     #try:
@@ -49,21 +66,12 @@ async def grab(ctx, channel:discord.TextChannel, limit:int):
                 failed_messages.append(message.content)
             else:
                 #An embed exists at this point. TODO: Check if it's a twit, or fxtwit or vxtwit or whatever
-
+                
 
                 #make a new data object, get the handle from the first embed (which should exist with the first check)
-                current_data = EmbedData(extract_handle(message.embeds[0].author.name)) # fetch twi handle (todo check if it's a twi thing)
-
-                #if multiple embeds (> 1 image in one of em)
-                if len(message.embeds) > 1:
-                    for embed in message.embeds:
-                        #foreach embed(image) slap its link in the current data object
-                        current_data.image_links.append(message.embeds[0].image.proxy_url)
-                else:
-                    #just one image, just get from index 0
-                    current_data.image_links.append(message.embeds[0].image.proxy_url)
+                all_embed_data.append(create_data_normal(message))
                 
-            all_embed_data.append(current_data)    
+                
                     
             
         print(all_embed_data)
