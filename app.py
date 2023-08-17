@@ -8,23 +8,24 @@ bot = discord.Bot(command_prefix='xl', description='A simple bot.')
 
 
 def extract_handle(title):
-    print(type(title))
+    print(f"Parsing {title}")
     if not isinstance(title, str):
         raise Exception(f"Expected string for title of handle extraction. Obtained {title}.")
     title = title.split('(@')[1]
     title = title[:-1]
     return title
+    
+       
 
 class EmbedData():
-    def __init__(self, handle, image_links):
+    def __init__(self, handle):
         if not isinstance(handle, str):
             raise Exception("Expected String for handle")
-        for link in image_links:
-            if not isinstance(link,str):
-                raise Exception("Expected string for all image_link elements")
         self.handle = handle
-        self.image_links = image_links
+        self.image_links = []
 
+    def __repr__(self) -> str:
+        return f'@{self.handle} - {self.image_links}'
 
 
 @bot.event
@@ -36,33 +37,36 @@ async def grab(ctx, channel:discord.TextChannel, limit:int):
     #try:
         messages = await channel.history(limit=limit).flatten()
 
-        embed_data = []
+        all_embed_data = []
         failed_messages = []
 
         for message in messages:
-            #text = await channel.fetch_message(message.id)
+            #for each message in the channel...
+
             if len(message.embeds) <= 0:
-                #should add the message to a "failed fetch" list to be added @ the last message but for now do nothing
-                print(message.content)
+                #if no embeds
+                #should add the message to a "failed fetch" list to be added @ the last message
                 failed_messages.append(message.content)
             else:
-                #this will work with one embed with multiple images, but how about multiple embeds (twi links) in one message??
-                
-                
-                
+                #An embed exists at this point. TODO: Check if it's a twit, or fxtwit or vxtwit or whatever
+
+
+                #make a new data object, get the handle from the first embed (which should exist with the first check)
+                current_data = EmbedData(extract_handle(message.embeds[0].author.name)) # fetch twi handle (todo check if it's a twi thing)
+
                 #if multiple embeds (> 1 image in one of em)
                 if len(message.embeds) > 1:
-                    print("big boi")
+                    for embed in message.embeds:
+                        #foreach embed(image) slap its link in the current data object
+                        current_data.image_links.append(message.embeds[0].image.proxy_url)
+                else:
+                    #just one image, just get from index 0
+                    current_data.image_links.append(message.embeds[0].image.proxy_url)
                 
-                #if one embed (one image)
-                for embed in message.embeds:
-                    #maybe should have a twi detector if there's other sources of embeds
-                    print(f'{message.content} - {embed.author}')
+            all_embed_data.append(current_data)    
                     
-                    embed_data.append(extract_handle(embed.author.name))
-                    embed_data.append(embed.image.proxy_url)
             
-        print(embed_data)
+        print(all_embed_data)
         #then with each embed data entry, get the image and name it with the username got before.
 
         failed_message_response = ''
