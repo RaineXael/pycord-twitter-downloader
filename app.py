@@ -1,10 +1,13 @@
 import discord
 import dotenv
 import os
-import requests
+import aiohttp
 
 dotenv.load_dotenv()
 bot = discord.Bot(command_prefix="xl", description="A simple bot.")
+
+FOLDER_NAME='images'
+CHUNK_SIZE = 40
 
 
 def extract_handle(title):
@@ -23,11 +26,14 @@ def extract_handle(title):
 
 
 class EmbedData:
-    def __init__(self, handle):
+    def __init__(self, handle, original_message):
         if not isinstance(handle, str):
             raise Exception("Expected String for handle")
+        if not isinstance(original_message, str):
+            raise Exception("Expected String for original message")
         self.handle = handle
         self.image_links = []
+        self.original_message = original_message
 
     def __repr__(self) -> str:
         return f"@{self.handle} - {self.image_links}"
@@ -42,7 +48,8 @@ async def on_ready():
 def create_data_normal(message):
     print(f"Parsing link{message.content}")
     current_data = EmbedData(
-        extract_handle(message.embeds[0].author.name)
+        extract_handle(message.embeds[0].author.name),
+        message.content
     )  # fetch twi handle (todo check if it's a twi thing)
     # if multiple embeds (> 1 image in one of em)
     if len(message.embeds) > 1:
@@ -58,7 +65,8 @@ def create_data_normal(message):
 def create_data_fx(message):
     print(f"Parsing link{message.content}")
     current_data = EmbedData(
-        extract_handle(message.embeds[0].title)
+        extract_handle(message.embeds[0].title),
+        message.content
     )  # fetch twi handle (todo check if it's a twi thing)
     # if multiple embeds (> 1 image in one of em)
     if len(message.embeds) > 1:
@@ -71,13 +79,18 @@ def create_data_fx(message):
 
     return current_data
 
-
 @bot.slash_command(
     name="grab", description="Grabs all images from embeds in a specific channel"
 )
 async def grab(ctx, channel: discord.TextChannel, limit: int):
     # try:
     await ctx.respond(f"Attempting to fetch embeds...")
+
+    if os.path.exists(f'./{FOLDER_NAME}'):
+        await ctx.send(f"A folder exists already. Please remove it, then try again.")
+        return
+    else:
+        os.mkdir(f'./{FOLDER_NAME}')
 
     messages = await channel.history(limit=limit).flatten()
 
@@ -104,8 +117,30 @@ async def grab(ctx, channel: discord.TextChannel, limit: int):
                     message.content
                 )  # should just try anyways but having this here for now
 
+    data_count = len(all_embed_data)
     print(all_embed_data)
-    # then with each embed data entry, get the image and name it with the username got before.
+
+    await ctx.send(f"Embed searching complete! Found {data_count} entries. Starting download.")
+
+
+    #downloading phase
+    download_count = 0
+    for data_object in all_embed_data:
+        
+        for link in data_object.image_links:
+            if isinstance(link,str):
+                async with aiohttp.ClientSession() as session:
+                    filename = f'./{FOLDER_NAME}/{download_count}-({data_object.handle})'                    
+                    async with session.get(link) as resp:
+                        filetype = resp.content_type.split('/')[1]
+                        with open(f'{filename}.{filetype}', 'wb') as fd:
+                            async for chunk in resp.content.iter_chunked(CHUNK_SIZE):
+                                fd.write(chunk)
+                        download_count += 1
+            else: 
+                #don't download that image if something is wrong, and append it to failed messages
+                failed_messages.append(data_object.original_message)
+
 
     failed_message_response = ""
     if len(failed_messages) > 0:
@@ -123,7 +158,7 @@ async def grab(ctx, channel: discord.TextChannel, limit: int):
     await ctx.send(
         f"Embed checking done. Starting downloading process.{failed_message_response}"
     )
-    # await ctx.respond(f"Embed checking done. Please check the system's files for the output.",ephemeral=True)
+
 
 
 # except Exception as e:
