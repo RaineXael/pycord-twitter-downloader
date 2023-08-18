@@ -9,7 +9,7 @@ bot = discord.Bot(command_prefix="xl", description="A simple bot.")
 
 FOLDER_NAME='images'
 CHUNK_SIZE = 40
-PAUSE_INTERVAL = 20
+PAUSE_INTERVAL = 25
 
 def extract_handle(title):
     print(f"Parsing {title}")
@@ -146,26 +146,34 @@ async def grab(ctx, channel: discord.TextChannel, limit: int):
                     failed_messages.append(data_object.original_message)
             else:
                 #pause for a bit
-                print('Sleeping for 3 seconds to give time to catch up...')
-                time.sleep(4)
+                print('Sleeping for a while...')
+                time.sleep(3)
                 wait_timer = 0
 
 
+    fail_max_reached = False
     failed_message_response = ""
+    failed_message_response_full = ""
     if len(failed_messages) > 0:
         failed_message_response = "\n\nThere were some messages that failed to parse. Please look at them individually:\n"
 
         for message in failed_messages:
-            if "https://" in message and len(failed_message_response + message) < 1800:
-                failed_message_response += f'\n* "{message}"'
+            if "https://" in message:
+                failed_message_response_full += f'\n* "{message}"'
+                if len(failed_message_response + message) < 1800:
+                    failed_message_response += f'\n* "{message}"'  
+                elif not fail_max_reached:
+                    fail_max_reached = True
+                    failed_message_response += '\nAnd more. Please check the console output for the full list.' 
+
 
     print(
         "--------------------------------------------------------------------------------"
     )
-    print(failed_message_response)
+    print(failed_message_response_full)
 
     await ctx.send(
-        f"Embed checking done. Starting downloading process.{failed_message_response}"
+        f"Download complete! Check the new directory in the bot's folder. {failed_message_response}"
     )
 
 
