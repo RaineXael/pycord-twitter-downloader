@@ -2,13 +2,14 @@ import discord
 import dotenv
 import os
 import aiohttp
+import time
 
 dotenv.load_dotenv()
 bot = discord.Bot(command_prefix="xl", description="A simple bot.")
 
 FOLDER_NAME='images'
 CHUNK_SIZE = 40
-
+PAUSE_INTERVAL = 20
 
 def extract_handle(title):
     print(f"Parsing {title}")
@@ -125,21 +126,29 @@ async def grab(ctx, channel: discord.TextChannel, limit: int):
 
     #downloading phase
     download_count = 0
+    wait_timer = 0
     for data_object in all_embed_data:
         
         for link in data_object.image_links:
-            if isinstance(link,str):
-                async with aiohttp.ClientSession() as session:
-                    filename = f'./{FOLDER_NAME}/{download_count}-({data_object.handle})'                    
-                    async with session.get(link) as resp:
-                        filetype = resp.content_type.split('/')[1]
-                        with open(f'{filename}.{filetype}', 'wb') as fd:
-                            async for chunk in resp.content.iter_chunked(CHUNK_SIZE):
-                                fd.write(chunk)
-                        download_count += 1
-            else: 
-                #don't download that image if something is wrong, and append it to failed messages
-                failed_messages.append(data_object.original_message)
+            if wait_timer < PAUSE_INTERVAL:
+                if isinstance(link,str):
+                    async with aiohttp.ClientSession() as session:
+                        filename = f'./{FOLDER_NAME}/{download_count}-({data_object.handle})'                    
+                        async with session.get(link) as resp:
+                            filetype = resp.content_type.split('/')[1]
+                            with open(f'{filename}.{filetype}', 'wb') as fd:
+                                async for chunk in resp.content.iter_chunked(CHUNK_SIZE):
+                                    fd.write(chunk)
+                            download_count += 1
+                            wait_timer += 1
+                else: 
+                    #don't download that image if something is wrong, and append it to failed messages
+                    failed_messages.append(data_object.original_message)
+            else:
+                #pause for a bit
+                print('Sleeping for 3 seconds to give time to catch up...')
+                time.sleep(4)
+                wait_timer = 0
 
 
     failed_message_response = ""
