@@ -111,7 +111,7 @@ async def grab(ctx, channel: discord.TextChannel, limit: int):
                 or "/vxtwitter.com/" in message.content
             ):
                 all_embed_data.append(create_data_fx(message))
-            elif "/twitter.com/" in message.content:
+            elif "/twitter.com/" in message.content or "/x.com/" in message.content:
                 all_embed_data.append(create_data_normal(message))
             else:
                 failed_messages.append(
